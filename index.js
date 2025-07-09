@@ -1,26 +1,32 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const app = express();
+const { DateTime } = require('luxon');
 
-// Parse plain text
+const app = express();
 app.use(bodyParser.text());
 
 app.post('/minutes-since', (req, res) => {
-  const timestamp = req.body;
+  const rawInput = req.body;
 
-  if (!timestamp || typeof timestamp !== 'string') {
-    return res.status(400).json({ error: 'Expected a datetime string in request body.' });
+  if (!rawInput || typeof rawInput !== 'string') {
+    return res.status(400).json({ error: 'Expected a datetime string in the request body.' });
   }
 
   try {
-    const then = new Date(timestamp);
-    const now = new Date();
+    // Try native parsing first
+    let parsedDate = new Date(rawInput);
 
-    if (isNaN(then.getTime())) {
-      return res.status(400).json({ error: 'Invalid date format.' });
+    // If native parse fails (NaN), try using Luxon
+    if (isNaN(parsedDate.getTime())) {
+      parsedDate = DateTime.fromFormat(rawInput.trim(), 'LLLL d, yyyy h:mm a', { zone: 'Asia/Singapore' }).toJSDate();
     }
 
-    const diffMs = now - then;
+    if (isNaN(parsedDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid date format. Expected format like "July 9, 2025 8:41 PM".' });
+    }
+
+    const now = new Date();
+    const diffMs = now - parsedDate;
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
     res.json({ minutesAgo: diffMinutes });
