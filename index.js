@@ -5,7 +5,19 @@ const { DateTime } = require('luxon');
 const app = express();
 app.use(bodyParser.text());
 
-app.post('/minutes-since', (req, res) => {
+// 🔐 API key middleware
+const apiKeyMiddleware = (req, res, next) => {
+  const apiKey = req.headers['x-api-key'];
+  const expectedKey = process.env.API_KEY;
+
+  if (!apiKey || apiKey !== expectedKey) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid or missing API key' });
+  }
+
+  next(); // API key is valid, continue to handler
+};
+
+app.post('/minutes-since', apiKeyMiddleware, (req, res) => {
   const rawInput = req.body;
 
   if (!rawInput || typeof rawInput !== 'string') {
